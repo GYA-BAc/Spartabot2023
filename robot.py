@@ -1,9 +1,9 @@
 import wpilib
 from ctre import WPI_TalonSRX
 from magicbot import MagicRobot
-from networktables import NetworkTables, NetworkTablesInstance
+from networktables import NetworkTables, NetworkTable
 
-from components import DriveTrain
+from components.drivetrain import DriveTrain
 
 # Download and install stuff on the RoboRIO after imaging
 '''py -3 -m robotpy_installer download-python
@@ -27,16 +27,16 @@ INPUT_SENSITIVITY = .3
 
 class SpartaBot(MagicRobot):
 
-    # MagicRobot automatically makes an instance of DriveTrain
+    # a DriveTrain instance is automatically created by MagicRobot
     drivetrain: DriveTrain
 
     def createObjects(self):
         '''Create motors and stuff here'''
 
         NetworkTables.initialize(server='roborio-5045-frc.local')
-        self.sd: NetworkTablesInstance = NetworkTables.getTable('SmartDashboard')
+        self.sd: NetworkTable = NetworkTables.getTable('SmartDashboard')
 
-        self.drive_controller = wpilib.XboxController(0)
+        self.drive_controller = wpilib.XboxController(0) #0 works for sim?
 
         self.talon_L_1 = WPI_TalonSRX(6)
         self.talon_L_2 = WPI_TalonSRX(9)
@@ -44,12 +44,8 @@ class SpartaBot(MagicRobot):
         self.talon_R_1 = WPI_TalonSRX(1)
         self.talon_R_2 = WPI_TalonSRX(5)
 
-        # drivetrain
-        self.drivetrain = DriveTrain(
-            LMotors=[self.talon_L_1, self.talon_L_2],
-            RMotors=[self.talon_R_1, self.talon_R_2],
-            smart_dashboard=self.sd
-        )
+    def disabledPeriodic(self):
+        self.sd.putValue("Mode", "Disabled")
 
     def teleopInit(self):
         '''Called when teleop starts; optional'''
@@ -61,11 +57,9 @@ class SpartaBot(MagicRobot):
         #print(self.drive_controller.getRawAxis(0))
         speed = self.drive_controller.getLeftY()
 
-        #angle, speed = 0.0, 0.0
-
         if (abs(angle) > INPUT_SENSITIVITY or abs(speed) > INPUT_SENSITIVITY):
-            #self.drive.arcadeDrive(-angle * ANGLE_MULTIPLIER, -speed * SPEED_MULTIPLIER, True) NOTE: THIS IS INVERSED?
-            self.drivetrain.set_motors(speed, angle)
+            # inverse values to get inverse controls
+            self.drivetrain.set_motors(-speed, -angle)
             self.sd.putValue('Drivetrain: ', 'moving')
 
         else:
@@ -73,8 +67,6 @@ class SpartaBot(MagicRobot):
             self.drivetrain.set_motors(0.0, 0.0)
             self.sd.putValue('Drivetrain: ', 'static')
         
-        self.drivetrain.execute()
-
         # self.drivetrain's execute() method is automatically called
 
 if __name__ == '__main__':
